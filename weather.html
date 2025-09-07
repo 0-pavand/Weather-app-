@@ -42,25 +42,13 @@
         <div id="weatherDisplay" class="text-center min-h-[300px] flex flex-col justify-center items-center">
             <div id="initialContent" class="text-center">
                 <!-- SVG illustration from unDraw -->
-                <img src="weather.png" alt="Weather illustration" class="mx-auto mb-4 w-60 h-auto">
+                <img src="https://undraw.co/illustrations/weather-app/undraw_weather_app_d2d1.svg" alt="Weather illustration" class="mx-auto mb-4 w-60 h-auto">
                 <p id="message" class="text-gray-500 text-center">Enter a city to see the weather.</p>
             </div>
         </div>
     </div>
 
     <script>
-        // Mapping of WMO Weather Codes to descriptions
-        const wmoWeatherCodes = {
-            0: "Clear sky", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast", 45: "Fog", 48: "Depositing rime fog",
-            51: "Light drizzle", 53: "Moderate drizzle", 55: "Dense drizzle", 56: "Light freezing drizzle",
-            57: "Dense freezing drizzle", 61: "Slight rain", 63: "Moderate rain", 65: "Heavy rain",
-            66: "Light freezing rain", 67: "Heavy freezing rain", 71: "Slight snow fall",
-            73: "Moderate snow fall", 75: "Heavy snow fall", 77: "Snow grains", 80: "Slight rain showers",
-            81: "Moderate rain showers", 82: "Violent rain showers", 85: "Slight snow showers",
-            86: "Heavy snow showers", 95: "Thunderstorm", 96: "Thunderstorm with slight hail",
-            99: "Thunderstorm with heavy hail"
-        };
-        
         // Get references to DOM elements
         const cityInput = document.getElementById('cityInput');
         const searchButton = document.getElementById('searchButton');
@@ -77,34 +65,24 @@
             weatherDisplay.innerHTML = `<p class="text-gray-500 animate-pulse">Fetching weather data...</p>`;
             
             try {
-                // Step 1: Geocoding API call
-                const geocodingUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${cityName}&count=1&language=en&format=json`;
-                const geoResponse = await fetch(geocodingUrl);
-                const geoData = await geoResponse.json();
+                // This is the updated line to call your Python backend on Vercel
+                const backendUrl = `/api/weather?city=${encodeURIComponent(cityName)}`;
+                const response = await fetch(backendUrl);
+                const data = await response.json();
 
-                if (!geoData.results || geoData.results.length === 0) {
-                    weatherDisplay.innerHTML = `<p class="text-red-500">Error: Could not find city "${cityName}".</p>`;
+                if (response.status !== 200) {
+                    weatherDisplay.innerHTML = `<p class="text-red-500">Error: ${data.error}</p>`;
                     return;
                 }
-
-                const { latitude, longitude } = geoData.results[0];
-
-                // Step 2: Weather API call using coordinates
-                const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,weather_code,apparent_temperature&temperature_unit=celsius`;
-                const weatherResponse = await fetch(weatherUrl);
-                const weatherData = await weatherResponse.json();
                 
-                const current = weatherData.current;
-                const weatherDescription = wmoWeatherCodes[current.weather_code] || "Unknown weather condition";
-
-                // Display the weather information
+                // Display the weather information from the backend response
                 weatherDisplay.innerHTML = `
-                    <h2 class="text-4xl font-semibold text-gray-800 mb-2">${cityName}</h2>
-                    <p class="text-7xl font-light text-gray-800 mb-2">${Math.round(current.temperature_2m)}°C</p>
-                    <p class="text-xl font-medium text-gray-600 mb-4">${weatherDescription}</p>
+                    <h2 class="text-4xl font-semibold text-gray-800 mb-2">${data.city}</h2>
+                    <p class="text-7xl font-light text-gray-800 mb-2">${Math.round(data.temperature)}°C</p>
+                    <p class="text-xl font-medium text-gray-600 mb-4">${data.weather_description}</p>
                     <div class="text-lg text-gray-500 space-y-2">
-                        <p>Feels like: ${Math.round(current.apparent_temperature)}°C</p>
-                        <p>Humidity: ${current.relative_humidity_2m}%</p>
+                        <p>Feels like: ${Math.round(data.feels_like)}°C</p>
+                        <p>Humidity: ${data.humidity}%</p>
                     </div>
                 `;
 
